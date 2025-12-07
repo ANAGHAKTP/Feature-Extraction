@@ -6,18 +6,57 @@ import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# Add parent directory to path to import main.py
-from main import preprocess_image, extract_edges, detect_contours
-
 app = Flask(__name__)
 CORS(app)
+
+# Global variable to store import error
+import_error = None
+
+# Ensure current directory is in path for Vercel
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
+try:
+    # Add parent directory to path to import main.py
+    from main import preprocess_image, extract_edges, detect_contours
+except ImportError as e:
+    import_error = str(e)
+    # Define dummy functions so the code doesn't crash immediately on load
+    def preprocess_image(img): raise ImportError(import_error)
+    def extract_edges(img): raise ImportError(import_error)
+    def detect_contours(img): raise ImportError(import_error)
+
+@app.route('/', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    if import_error:
+        return jsonify({'status': 'error', 'message': f'Import failed: {import_error}'}), 500
+    return jsonify({'status': 'ok', 'message': 'Feature Extraction API is running'}), 200
+
+# Catch-all to debug path issues
+@app.route('/<path:subpath>', methods=['GET', 'POST'])
+def catch_all(subpath):
+    return jsonify({
+        'error': 'Path not found by Flask routing',
+        'received_path': subpath,
+        'method': request.method,
+        'url': request.url
+    }), 404
+
+# Alias for direct invocation if Vercel passes the file path
+@app.route('/api/index.py', methods=['GET', 'POST'])
+@app.route('/process', methods=['GET', 'POST'])
+def process_route():
+    if request.method == 'GET':
+        return health_check()
+    return process_image()
 
 def encode_image(image):
     """Encode image to base64 string."""
     _, buffer = cv2.imencode('.png', image)
     return base64.b64encode(buffer).decode('utf-8')
 
-@app.route('/process', methods=['POST'])
 def process_image():
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
@@ -55,7 +94,12 @@ def process_image():
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc() # Print to Vercel logs
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -1,6 +1,6 @@
 import cv2 # Imports the OpenCV library for computer vision tasks.
 import numpy as np # Imports the NumPy library for numerical operations, especially array manipulation.
-import matplotlib.pyplot as plt # Imports the Matplotlib library for plotting and visualization.
+
 
 def load_image(image_path):
     """Load an image from the specified path."""
@@ -27,6 +27,7 @@ def detect_contours(edges):
 
 def visualize_features(original_image, edges, contours):
     """Visualize the original image, edges, and detected contours."""
+    import matplotlib.pyplot as plt # Imports the Matplotlib library for plotting and visualization.
     # Create a blank canvas for contours
     contour_image = np.zeros_like(original_image) # Creates a blank image with the same size and type as the original image.
     cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2) # Draws the contours on the blank image in green.

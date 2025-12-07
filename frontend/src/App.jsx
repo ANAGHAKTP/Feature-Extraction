@@ -49,7 +49,18 @@ function App() {
       setProcessedImages(response.data)
     } catch (err) {
       console.error(err)
-      setError("Error processing image. Ensure the backend is running.")
+      let msg = err.message || "Unknown error";
+      if (err.response) {
+        msg += ` (Status: ${err.response.status})`;
+        if (err.response.data && err.response.data.error) {
+          msg += `: ${err.response.data.error}`;
+        } else if (typeof err.response.data === 'string' && err.response.data.includes('<html')) {
+          msg += `: Server returned HTML (possible crash or incorrect route)`;
+        }
+      } else if (err.request) {
+        msg += " (No response received from server)";
+      }
+      setError(msg)
     } finally {
       setLoading(false)
     }
